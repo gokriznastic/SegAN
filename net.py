@@ -5,8 +5,9 @@ from numpy.random import normal
 from math import sqrt
 import argparse
 
+classes = 2
 channel_dim = 1
-ndf = 64
+ndf = 32
 
 class GlobalConvBlock(nn.Module):
     def __init__(self, in_dim, out_dim, kernel_size):
@@ -258,7 +259,7 @@ class NetS(nn.Module):
         self.deconvblock8_1 = ResidualBlock_D(ndf)
         self.deconvblock9 = nn.Sequential(
             # state size. (ngf) x 128 x 128
-            nn.Conv2d( ndf, 1, 5, 1, 2, bias=False),
+            nn.Conv2d( ndf, classes, 5, 1, 2, bias=False),
             # state size. (channel_dim) x 128 x 128
             # nn.Sigmoid()
         )
@@ -341,7 +342,7 @@ class NetC(nn.Module):
         self.ngpu = ngpu
         self.convblock1 = nn.Sequential(
             # input is (channel_dim) x 128 x 128
-            nn.Conv2d(channel_dim, ndf, 7, 2, 3, bias=False),
+            nn.Conv2d(classes, ndf, 7, 2, 3, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # nn.Dropout2d(p=0.2),
             # state size. (ndf) x 64 x 64
