@@ -3,7 +3,7 @@ import numpy as np
 from glob import glob
 from PIL import Image
 import torch
-from torchvision.transforms import Compose, ToTensor
+from torchvision.transforms import Compose, ToTensor, Resize
 from tifffile import imread
 
 def readData(root, train=True):
@@ -14,11 +14,11 @@ def readData(root, train=True):
     else:
         dir = os.path.join(root, 'test')
 
-    imagefNames = os.listdir(os.path.join(dir,'images'))
+    imagefNames = os.listdir(os.path.join(dir,'sampleimages'))
 
     for imgfName in imagefNames:
-        data.append([os.path.join(os.path.join(dir, 'images'),imgfName),
-                    os.path.join(os.path.join(dir, 'masks'), imgfName.replace('volume', 'segmentation'))])
+        data.append([os.path.join(os.path.join(dir, 'sampleimages'),imgfName),
+                    os.path.join(os.path.join(dir, 'samplemasks'), imgfName.replace('volume', 'segmentation'))])
 
     return data
 
@@ -42,25 +42,37 @@ def normalize(image):
     """
     image = setBounds(image,MIN_BOUND,MAX_BOUND)
     image = (image - MIN_BOUND) / (MAX_BOUND - MIN_BOUND)
-    image = np.clip(image,0.,1.)
-    image = image - PIXEL_MEAN
-    image = image/PIXEL_STD
+    # image = np.clip(image, 0., 1.)
+    # image = image - PIXEL_MEAN
+    # image = image/PIXEL_STD
     return image
+
+def splitChannels(gt):
+    c0 = np.copy(gt)
+    c1 = np.copy(gt)
+
+    c0[c0 == 2] = 0 # np.unique(c0) = [0, 1]
+    c1[c1 == 1] = 0 # np.unique(c1) = [0, 2]
+    c1[c1 == 2] = 1 # np.unique(c1) = [0, 1]
+
+    return c0, c1
 
 
 class LITS(torch.utils.data.Dataset):
 
-    def __init__(self, root, transform=None, train=True):
+    def __init__(self, root, size=(512, 512), transform=None, train=True):
         self.train = train
         self.root = root
-        self.size = (512, 512)
+        self.size = size
 
         if not os.path.exists(self.root):
             raise Exception("[!] The directory {} does not exist.".format(root))
 
         if (transform==None):
             self.transform = Compose([
-                            ToTensor()])
+                            Resize(self.size),
+                            ToTensor(),
+                            ])
         else:
             self.transform = transform
 
@@ -69,20 +81,26 @@ class LITS(torch.utils.data.Dataset):
     def __getitem__(self, index):
         self.imagePath, self.maskPath = self.paths[index]
         image = imread(self.imagePath)
-        gtMask = imread(self.maskPath)
-
-        image = image.reshape(self.size[0], self.size[1], -1)
-        gtMask = gtMask.reshape(self.size[0], self.size[1], -1)
+        gt = imread(self.maskPath)
 
         image = normalize(image)
+        targetL, targetT = splitChannels(gt)
 
         try:
-            image = self.transform(image)
-            gtMask = self.transform(gtMask)
+            image = self.transform(Image.fromarray(image))
+            gt = self.transform(Image.fromarray(gt))
+
+            targetL = self.transform(Image.fromarray(targetL))
+            targetT = self.transform(Image.fromarray(targetT))
+
         except:
             print("[!] Transform is invalid.")
 
-        return image, gtMask
+        image = np.asanyarray(image)
+        mask = np.vstack((np.asarray(targetL), np.asarray(targetT)))
+        gt = np.asarray(gt)
+
+        return image, mask, gt
 
     def __len__(self):
         return len(self.paths)
