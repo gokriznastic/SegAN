@@ -4,8 +4,7 @@ A PyTorch implementation of image segmentation GAN from the paper [SegAN: Advers
 
 #### Data
 
-We use the [LiTS - Liver Tumor Segmentation Challenge](https://competitions.codalab.org/competitions/17094) dataset
-Liver and tumor segmentation from CT scans.
+The data used is from [LiTS - Liver Tumor Segmentation Challenge](https://competitions.codalab.org/competitions/17094) dataset containing abdominal CT scans for liver and tumor segmentation.
 
 
 ### Acknowledgement
